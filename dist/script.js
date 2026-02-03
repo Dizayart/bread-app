@@ -70,26 +70,43 @@ function highlightTerms(text) {
   return highlightedText;
 }
 
-// Показ попапа
+// --- ДОБАВЬ ЭТУ ПЕРЕМЕННУЮ ВЫШЕ ИЛИ ПЕРЕД ФУНКЦИЕЙ ---
+let currentActiveTerm = null; // Запоминаем, какой термин сейчас открыт
+
+// Обновленная функция показа
 window.showTerm = function(term, definition) {
-  triggerHaptic('selection'); // Легкий клик
+  const popup = document.getElementById('glossary-popup');
+  
+  // ЛОГИКА ТУМБЛЕРА:
+  // Если попап активен И мы кликнули по тому же самому термину -> Закрываем
+  if (popup.classList.contains('active') && currentActiveTerm === term) {
+    window.closePopup();
+    return; // Останавливаем выполнение, чтобы не открыть снова
+  }
+
+  // Если это новый термин -> Открываем
+  triggerHaptic('selection'); 
+  
+  // Делаем первую букву заглавной
   const formattedTerm = term.charAt(0).toUpperCase() + term.slice(1);
+  
   document.getElementById('pop-term').innerText = formattedTerm;
   document.getElementById('pop-def').innerText = definition;
-  document.getElementById('glossary-popup').classList.add('active');
+  popup.classList.add('active');
+  
+  // Запоминаем текущий термин
+  currentActiveTerm = term;
 };
 
+// Обновленная функция закрытия
 window.closePopup = function() {
-  document.getElementById('glossary-popup').classList.remove('active');
-};
-
-// Закрытие по крестику
-document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('close-btn')) {
-    e.preventDefault();
-    window.closePopup();
+  const popup = document.getElementById('glossary-popup');
+  if (popup.classList.contains('active')) {
+    popup.classList.remove('active');
+    triggerHaptic('selection'); // Легкая отдача при закрытии (опционально)
+    currentActiveTerm = null;   // Сбрасываем память
   }
-});
+};
 
 // --- 4. ТАЙМЕР ---
 window.startTimer = function(element, totalSeconds) {
@@ -192,7 +209,12 @@ async function buildStory() {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          // Легкая вибрация при смене слайда (только если новый)
+          
+          // --- ВОТ СЮДА ДОБАВЛЯЕМ ЗАКРЫТИЕ ПОПАПА ---
+          window.closePopup(); 
+          // ------------------------------------------
+
+          // Легкая вибрация при смене слайда
           if (!entry.target.classList.contains('visible')) {
              triggerHaptic('selection');
           }
