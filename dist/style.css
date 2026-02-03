@@ -1,15 +1,19 @@
 /* --- 1. ОСНОВА И МАГНИТНЫЙ СКРОЛЛ --- */
 :root {
-  --bg-color: #fffdf5;      /* Бежевый фон */
-  --accent-blue: #3249B4;   /* Кобальтовый синий */
+  --bg-color: #fffdf5;
+  --accent-blue: #3249B4;
   --font-header: 'Yanone Kaffeesatz', sans-serif;
   --font-body: 'Jost', sans-serif;
   --font-hand: 'Caveat', cursive;
 }
 
 html {
+  /* Базовый размер шрифта: 18px (крупно и читаемо) */
+  font-size: 18px; 
   scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
+  /* Запрет на автоматическое изменение размера текста в iOS */
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -17,8 +21,17 @@ body {
   background-color: var(--bg-color);
   color: var(--accent-blue);
   font-family: var(--font-body);
+  /* Гарантируем ширину экрана */
+  width: 100%;
+  max-width: 100vw;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Добавь это для картинок и видео, чтобы они не вылезали за экран */
+img, video, svg {
+  max-width: 100%;
+  height: auto;
 }
 
 /* --- 2. СЛОИ И МАСКИ --- */
