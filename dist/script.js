@@ -1,46 +1,38 @@
-// --- 0. ДИАГНОСТИКА (Это создаст полоску сверху) ---
+// --- 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM ---
 const tg = window.Telegram?.WebApp;
-const debugPanel = document.createElement('div');
-
-// Делаем красную полоску на весь верх экрана
-debugPanel.style.cssText = `
-  position: fixed; top: 0; left: 0; width: 100%; 
-  background: red; color: white; z-index: 10000; 
-  font-size: 14px; padding: 10px; text-align: center; font-weight: bold;
-`;
-document.body.appendChild(debugPanel);
-
-function log(msg) {
-  debugPanel.innerText = msg;
-}
 
 if (tg) {
   tg.ready();
-  tg.expand();
-  // Если API работает, полоска станет ЗЕЛЕНОЙ
-  debugPanel.style.background = "#228B22"; 
-  log(`TG v${tg.version} | ${tg.platform} | Жми экран!`);
-} else {
-  log("TG API НЕ НАЙДЕН. (Открыто в браузере?)");
+  // Разворачиваем на весь экран
+  try { tg.expand(); } catch(e) {}
+  
+  // Устанавливаем цвета хедера под стиль приложения (бежевый)
+  try { 
+    tg.setHeaderColor('#fffdf5'); 
+    tg.setBackgroundColor('#fffdf5');
+  } catch(e) {}
 }
 
-// --- ТЕСТ-МОЛОТОК: Вибрация при клике в любое место ---
-document.addEventListener('click', () => {
-  if (!tg) return;
-  
-  // Пытаемся вызвать вибрацию и пишем результат в полоску
+// Утилита для вибрации (безопасная)
+function triggerHaptic(type = 'medium') {
+  // Если API нет, выходим молча
+  if (!tg || !tg.HapticFeedback) return;
+
   try {
-    tg.HapticFeedback.impactOccurred('heavy'); 
-    tg.HapticFeedback.notificationOccurred('success');
-    log(`ВИБРАЦИЯ ОТПРАВЛЕНА! v${tg.version}`);
+    if (type === 'selection') {
+      tg.HapticFeedback.selectionChanged();
+    } else if (['light', 'medium', 'heavy'].includes(type)) {
+      tg.HapticFeedback.impactOccurred(type);
+    } else {
+      // success, warning, error
+      tg.HapticFeedback.notificationOccurred(type);
+    }
   } catch (e) {
-    log(`ОШИБКА: ${e.message}`);
+    // Игнорируем ошибки на старых устройствах
   }
-});
+}
 
-// --- ДАЛЕЕ ВАШ ОСНОВНОЙ КОД (БЕЗ ИЗМЕНЕНИЙ) ---
-
-// 1. НАСТРОЙКИ SUPABASE
+// --- 2. НАСТРОЙКИ SUPABASE ---
 const SUPABASE_URL = 'https://mnrvemqaukyjerznlaaw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_VMkkVQ1xIClm6MPfue4WiQ_xnOe9FYh';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -52,7 +44,7 @@ let glossaryData = [];
 const timerSound = new Audio('https://mnrvemqaukyjerznlaaw.supabase.co/storage/v1/object/public/asets/mixkit-bell-tick-tock-timer-1046.wav');
 timerSound.preload = 'auto';
 
-// 2. ЛОГИКА СЛОВАРЯ
+// --- 3. ЛОГИКА СЛОВАРЯ ---
 async function fetchGlossary() {
   const { data } = await supabaseClient.from('glossary').select('term, definition');
   glossaryData = data || [];
@@ -61,23 +53,28 @@ async function fetchGlossary() {
 function highlightTerms(text) {
   if (!text) return '';
   let highlightedText = text.replace(/\n/g, '<br>'); 
+  
+  // Авто-выделение чисел
   const accentRegex = /(\d+[-–/]?\d*\s?(°C|°С|гр\.|минуты|минут|часов|часа|час))/g;
   highlightedText = highlightedText.replace(accentRegex, '<span class="accent-text">$1</span>');
 
+  // Поиск терминов
   glossaryData.forEach(item => {
     const regex = new RegExp(`(${item.term})`, 'gi');
     highlightedText = highlightedText.replace(regex, (match) => {
+      // replace(/'/g, "\\'") экранирует кавычки
       return `<span class="term-link" onclick="window.showTerm('${match}', '${item.definition.replace(/'/g, "\\'")}')">${match}</span>`;
     });
   });
+  
   return highlightedText;
 }
 
+// Показ попапа
 window.showTerm = function(term, definition) {
-  // Вибрация при открытии попапа
-  if(tg) tg.HapticFeedback.selectionChanged();
-  
-  document.getElementById('pop-term').innerText = term.charAt(0).toUpperCase() + term.slice(1);
+  triggerHaptic('selection'); // Легкий клик
+  const formattedTerm = term.charAt(0).toUpperCase() + term.slice(1);
+  document.getElementById('pop-term').innerText = formattedTerm;
   document.getElementById('pop-def').innerText = definition;
   document.getElementById('glossary-popup').classList.add('active');
 };
@@ -86,6 +83,7 @@ window.closePopup = function() {
   document.getElementById('glossary-popup').classList.remove('active');
 };
 
+// Закрытие по крестику
 document.addEventListener('click', function(e) {
   if (e.target.classList.contains('close-btn')) {
     e.preventDefault();
@@ -93,19 +91,20 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// 3. ТАЙМЕР
+// --- 4. ТАЙМЕР ---
 window.startTimer = function(element, totalSeconds) {
   if (element.classList.contains('running')) return;
   
-  // Вибрация при старте
-  if(tg) tg.HapticFeedback.impactOccurred('medium');
+  triggerHaptic('medium'); // Вибрация старта
   
+  // Хак для iOS: запускаем звук по клику, чтобы разблокировать
   timerSound.play().then(() => {
     timerSound.pause();
     timerSound.currentTime = 0;
-  }).catch(e => console.log("Audio check"));
+  }).catch(e => {});
 
   element.classList.add('running');
+  
   const progressCircle = element.querySelector('.timer-path-progress');
   const textDisplay = element.querySelector('.timer-text');
   let timeLeft = totalSeconds;
@@ -114,14 +113,12 @@ window.startTimer = function(element, totalSeconds) {
 
   const timer = setInterval(() => {
     timeLeft--;
+    
     updateTimerVisuals(timeLeft, totalSeconds, 283, progressCircle, textDisplay);
+
     if (timeLeft <= 0) {
       clearInterval(timer);
-      element.classList.remove('running');
-      textDisplay.innerText = "Готово!";
-      timerSound.play();
-      // Вибрация в конце
-      if(tg) tg.HapticFeedback.notificationOccurred('success');
+      finishTimer(element, textDisplay);
     }
   }, 1000);
 };
@@ -129,8 +126,21 @@ window.startTimer = function(element, totalSeconds) {
 function updateTimerVisuals(timeLeft, totalSeconds, fullDash, circle, text) {
    const progress = 1 - (timeLeft / totalSeconds);
    circle.style.strokeDashoffset = fullDash - (progress * fullDash);
-   circle.style.strokeWidth = `${2 + (progress * 6)}px`;
+   
+   // Дыхание линии
+   const newWidth = 2 + (progress * 6);
+   circle.style.strokeWidth = `${newWidth}px`;
+   
    text.innerText = formatTime(timeLeft);
+}
+
+function finishTimer(element, textDisplay) {
+  element.classList.remove('running');
+  textDisplay.innerText = "Готово!";
+
+  // Звук + Вибрация успеха
+  timerSound.play().catch(e => {});
+  triggerHaptic('success');
 }
 
 function formatTime(seconds) {
@@ -139,13 +149,19 @@ function formatTime(seconds) {
   return `${parseFloat((seconds / 3600).toFixed(1))} ч`;
 }
 
-// 4. СБОРКА ИСТОРИИ
+// --- 5. СБОРКА ИСТОРИИ ---
 async function buildStory() {
   await fetchGlossary();
-  const { data: recipe } = await supabaseClient.from('recipes').select('id').eq('slug', 'wheat-bread').single();
+
+  const { data: recipe } = await supabaseClient
+    .from('recipes').select('id').eq('slug', 'wheat-bread').single();
+
   if (!recipe) return;
+
   await loadIngredients(recipe.id);
-  const { data: stages } = await supabaseClient.from('recipe_stages').select('*').eq('recipe_id', recipe.id).order('order_index', { ascending: true });
+
+  const { data: stages } = await supabaseClient
+    .from('recipe_stages').select('*').eq('recipe_id', recipe.id).order('order_index', { ascending: true });
 
   const textLayer = document.getElementById('text-layer');
   textLayer.innerHTML = ''; 
@@ -154,20 +170,32 @@ async function buildStory() {
     const section = document.createElement('section');
     section.className = 'step-block';
     
+    const titleWithLinks = highlightTerms(stage.title);
+    const contentWithLinks = highlightTerms(stage.content);
+    
     section.innerHTML = `
-      <h2>${highlightTerms(stage.title)}</h2>
+      <h2>${titleWithLinks}</h2>
       <div class="hand-divider"></div>
-      <p>${highlightTerms(stage.content)}</p>
-      ${stage.timer_sec ? `<div class="timer-wrapper" onclick="window.startTimer(this, ${stage.timer_sec})"><svg class="timer-svg" viewBox="0 0 100 100"><circle class="timer-path-bg" cx="50" cy="50" r="45"></circle><circle class="timer-path-progress" cx="50" cy="50" r="45"></circle></svg><div class="timer-text">${formatTime(stage.timer_sec)}</div></div>` : ''}
+      <p>${contentWithLinks}</p>
+      
+      ${stage.timer_sec ? `
+        <div class="timer-wrapper" onclick="window.startTimer(this, ${stage.timer_sec})">
+          <svg class="timer-svg" viewBox="0 0 100 100">
+            <circle class="timer-path-bg" cx="50" cy="50" r="45"></circle>
+            <circle class="timer-path-progress" cx="50" cy="50" r="45"></circle>
+          </svg>
+          <div class="timer-text">${formatTime(stage.timer_sec)}</div>
+        </div>
+      ` : ''}
     `;
     
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-           // Вибрация при скролле
-           if (!entry.target.classList.contains('visible') && tg) {
-             tg.HapticFeedback.selectionChanged();
-           }
+          // Легкая вибрация при смене слайда (только если новый)
+          if (!entry.target.classList.contains('visible')) {
+             triggerHaptic('selection');
+          }
           entry.target.classList.add('visible');
           updateVisuals(stage.animation_state);
           toggleCalculator(stage.order_index, stage.animation_state);
@@ -181,10 +209,13 @@ async function buildStory() {
     textLayer.appendChild(section);
   });
   
-  setTimeout(() => { document.querySelector('.step-block')?.classList.add('visible'); }, 300);
+  setTimeout(() => {
+     const first = document.querySelector('.step-block');
+     if(first) first.classList.add('visible');
+  }, 300);
 }
 
-// 5. КАЛЬКУЛЯТОР
+// --- 6. КАЛЬКУЛЯТОР ---
 function toggleCalculator(stageIndex, animationState) {
   const calc = document.getElementById('calculator-wrap');
   if (animationState === 'ingredients_screen') {
@@ -205,17 +236,34 @@ async function loadIngredients(recipeId) {
 }
 
 function renderIngredients(count) {
-  document.getElementById('yield-val').innerText = count;
-  document.getElementById('ingredients-list').innerHTML = baseIngredients.map(ing => `<li><span>${ing.name}</span><strong>${Math.round(ing.oneUnitWeight * count)} г</strong></li>`).join('');
+  const list = document.getElementById('ingredients-list');
+  const yieldVal = document.getElementById('yield-val');
+  
+  if (yieldVal) yieldVal.innerText = count;
+  if (list) {
+    list.innerHTML = baseIngredients.map(ing => `
+      <li>
+        <span>${ing.name}</span>
+        <strong>${Math.round(ing.oneUnitWeight * count)} г</strong>
+      </li>
+    `).join('');
+  }
 }
 
 function updateVisuals(state) {
   const bowl = document.getElementById('bowl-state');
-  const states = {'intro':'🌾','ingredients_screen':'⚖️','starter_info':'🧪','mix_1':'🥣','autolyse':'⏳','mix_2':'💪','fermentation':'📈','shaping':'⚪','proofing':'🧺','baking':'🔥'};
-  const next = states[state] || '🍞';
-  if(bowl.innerText !== next) {
+  const states = {
+    'intro': '🌾', 'ingredients_screen': '⚖️', 'starter_info': '🧪',
+    'mix_1': '🥣', 'autolyse': '⏳', 'mix_2': '💪',
+    'fermentation': '📈', 'shaping': '⚪', 'proofing': '🧺', 'baking': '🔥'
+  };
+  const nextEmoji = states[state] || '🍞';
+  if(bowl.innerText !== nextEmoji) {
     bowl.style.opacity = '0';
-    setTimeout(() => { bowl.innerText = next; bowl.style.opacity = '1'; }, 600);
+    setTimeout(() => { 
+        bowl.innerText = nextEmoji; 
+        bowl.style.opacity = '1'; 
+    }, 600);
   }
 }
 
@@ -223,8 +271,8 @@ function updateVisuals(state) {
 const yieldSlider = document.getElementById('yield-slider');
 yieldSlider.addEventListener('input', (e) => {
   renderIngredients(e.target.value);
-  // Вибрация при движении ползунка
-  if(tg) tg.HapticFeedback.selectionChanged();
+  triggerHaptic('selection'); // Вибрация "трещотка"
 });
 
+// Запуск
 buildStory();
