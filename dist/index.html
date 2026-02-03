@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>BreadMaster</title>
+    <link rel="stylesheet" href="./style.css">
+
+  </head>
+    
+  <body>
+  <head>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yanone+Kaffeesatz:wght@700&family=Caveat:wght@400;700&family=Jost:wght@300;400;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<div id="visual-layer">
+  <div id="bowl-state">🌾</div>
+</div>
+
+<div id="calculator-wrap">
+  <div class="calc-box">
+    <h3>Буханок: <span id="yield-val">2</span></h3>
+    <input type="range" id="yield-slider" min="1" max="10" value="2" step="1">
+    <ul id="ingredients-list"></ul>
+  </div>
+</div>
+
+<div id="text-layer"></div>
+
+<div id="glossary-popup">
+  <span class="close-btn" onclick="window.closePopup()">✕</span>
+  <h4 id="pop-term">Термин</h4>
+  <p id="pop-def">Описание появится здесь...</p>
+</div>
+    <script  src="./script.js"></script>
+
+  </body>
+  
+</html>

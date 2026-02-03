@@ -1,0 +1,293 @@
+/* --- 1. ОСНОВА И МАГНИТНЫЙ СКРОЛЛ --- */
+:root {
+  --bg-color: #fffdf5;      /* Бежевый фон */
+  --accent-blue: #3249B4;   /* Кобальтовый синий */
+  --font-header: 'Yanone Kaffeesatz', sans-serif;
+  --font-body: 'Jost', sans-serif;
+  --font-hand: 'Caveat', cursive;
+}
+
+html {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-color);
+  color: var(--accent-blue);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- 2. СЛОИ И МАСКИ --- */
+#text-layer {
+  position: relative;
+  z-index: 5;
+  mask-image: linear-gradient(to top, transparent 0%, black 10%);
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 10%);
+  padding-bottom: 80dvh; /* Чтобы последний экран мог подняться выше */
+}
+
+#visual-layer {
+  position: fixed;
+  bottom: 5vh;
+  left: 0;
+  width: 100%;
+  height: 30vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#bowl-state {
+  font-size: 120px; /* Оптимизировано под мобильный */
+  filter: drop-shadow(0 -10px 20px rgba(50, 73, 180, 0.2));
+  transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --- 3. БЛОКИ ЭТАПОВ (МОБИЛЬНАЯ АДАПТАЦИЯ) --- */
+.step-block {
+  height: 100dvh; /* Динамическая высота под мобайл */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+  /* env(safe-area-inset-top) поднимает заголовок максимально высоко, но не под челку */
+  padding: env(safe-area-inset-top, 10px) 20px 0 20px;
+  box-sizing: border-box;
+  scroll-snap-align: start;
+  opacity: 0.2;
+  transform: translateY(20px);
+  transition: all 0.8s ease;
+}
+
+.step-block.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.step-block:last-child {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+/* --- 4. ТИПОГРАФИКА (АФИША) --- */
+.step-block h2 {
+  font-family: var(--font-header);
+  font-size: clamp(3.8rem, 20vw, 7.5rem); 
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -2px;
+  line-height: 0.85; 
+  margin-top: 30px;   /* Подняли ближе к началу экрана */
+  margin-bottom: 5px;
+  color: var(--accent-blue);
+  overflow: visible;
+  display: block;
+  width: 100%;
+  word-wrap: break-word;
+}
+
+.step-block p {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 1.15rem;
+  line-height: 1.35;
+  max-width: 95%;   /* Чтобы не вылезало на узких экранах */
+  white-space: pre-line !important;
+  text-align: left;
+}
+
+.step-block p strong {
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+/* --- 5. ТЕРМИНЫ И ЛИНИИ (SVG) --- */
+.term-link {
+  position: relative;
+  text-decoration: none;
+  cursor: help;
+  display: inline-block;
+  color: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+}
+
+/* Очистка старых кружков (каляк-маляк) */
+.term-link::before, .term-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
+  z-index: -1;
+  border: none !important;      /* УДАЛЯЕМ СТАРЫЕ ГРАНИЦЫ */
+  border-radius: 0 !important;
+}
+
+/* Верхняя кривая линия */
+.term-link::before {
+  height: 6px;
+  bottom: -1px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M0 7 C 20 7, 30 2, 50 6 C 70 9, 80 3, 100 7' stroke='%233249B4' stroke-width='2' fill='transparent' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Нижняя кривая линия (для двойного эффекта) */
+.term-link::after {
+  height: 5px;
+  bottom: -5px;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q 25 8, 50 5 T 100 5' stroke='%233249B4' stroke-width='1.5' fill='transparent' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Фикс для заголовков: сохраняем размер и жирность */
+.step-block h2 .term-link {
+  font-size: inherit !important;
+  line-height: inherit !important;
+  display: inline;
+}
+
+.step-block h2 .term-link::before { height: 12px; bottom: -2px; }
+.step-block h2 .term-link::after { height: 10px; bottom: -8px; }
+
+/* --- 6. РАЗДЕЛИТЕЛЬ (ЧЕТКАЯ ЛИНИЯ) --- */
+.hand-divider {
+  width: 100%;             /* Исправлено со 150% для мобильных */
+  height: 1px;
+  background-color: var(--accent-blue);
+  margin: 20px 0;
+  border-radius: 0;
+  transform: none;
+  opacity: 0.6;
+}
+
+/* --- 7. ТАЙМЕР (ВОССТАНОВЛЕНИЕ) --- */
+.timer-wrapper {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin: 15px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.timer-svg {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  transform: rotate(-90deg);
+}
+
+/* Фоновая дорожка таймера */
+.timer-path-bg {
+  fill: none;
+  stroke: rgba(50, 73, 180, 0.1);
+  stroke-width: 1px;
+}
+
+/* Линия прогресса */
+.timer-path-progress {
+  fill: none;
+  stroke: var(--accent-blue);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 283;
+  transition: stroke-width 0.3s ease, stroke-dashoffset 0.3s linear;
+}
+
+.timer-text {
+  font-family: var(--font-header);
+  font-weight: 700;
+  font-size: 1.8rem;
+  color: var(--accent-blue);
+  z-index: 2;
+  line-height: 1;
+}
+
+/* --- 8. КАЛЬКУЛЯТОР (МОБИЛЬНЫЙ КРАФТ) --- */
+#calculator-wrap {
+  position: fixed;
+  top: 55dvh; /* Поднят чуть выше для удобства ввода */
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-1deg);
+  z-index: 100;
+  background: var(--bg-color);
+  padding: 20px;
+  border: 1.5px solid var(--accent-blue);
+  width: 88%; /* Адаптивная ширина */
+  max-width: 360px;
+  box-shadow: 0 10px 30px rgba(50, 73, 180, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#calculator-wrap.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#calculator-wrap h3 {
+  font-family: var(--font-header);
+  font-size: 2rem;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+#ingredients-list li {
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(50, 73, 180, 0.4);
+  font-size: 1.1rem;
+}
+
+#yield-slider {
+  width: 100%;
+  height: 2px;
+  background: var(--accent-blue);
+  margin: 25px 0;
+}
+
+/* --- 9. ГЛОССАРИЙ ПОПАП --- */
+#glossary-popup {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 110%);
+  width: 95%;
+  max-width: 400px;
+  background: var(--accent-blue);
+  color: var(--bg-color);
+  padding: 25px;
+  z-index: 9999;
+  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#glossary-popup.active {
+  transform: translate(-50%, -15px);
+  opacity: 1;
+  visibility: visible;
+}
+
+#glossary-popup h4 {
+  font-family: var(--font-header);
+  font-size: 2.2rem;
+  margin: 0 0 10px 0;
+}
+
+/* --- 10. АКЦЕНТЫ --- */
+.accent-text {
+  font-family: var(--font-hand);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
