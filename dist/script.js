@@ -40,9 +40,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let baseIngredients = []; 
 let glossaryData = [];
 
-// Звук
+// --- НАСТРОЙКИ ЗВУКА И ТАЙМЕРА ---
 const timerSound = new Audio('https://mnrvemqaukyjerznlaaw.supabase.co/storage/v1/object/public/asets/mixkit-bell-tick-tock-timer-1046.wav');
 timerSound.preload = 'auto';
+
+// Флаг: играет ли сейчас звонок? (Нужен, чтобы остановить звук, но не запускать новый таймер)
+let isSoundPlaying = false; 
 
 // --- 3. ЛОГИКА СЛОВАРЯ ---
 async function fetchGlossary() {
@@ -70,10 +73,10 @@ function highlightTerms(text) {
   return highlightedText;
 }
 
-// --- ДОБАВЬ ЭТУ ПЕРЕМЕННУЮ ВЫШЕ ИЛИ ПЕРЕД ФУНКЦИЕЙ ---
+// --- ПЕРЕМЕННАЯ ДЛЯ СЛОВАРЯ ---
 let currentActiveTerm = null; // Запоминаем, какой термин сейчас открыт
 
-// Обновленная функция показа
+// Обновленная функция показа термина
 window.showTerm = function(term, definition) {
   const popup = document.getElementById('glossary-popup');
   
@@ -108,34 +111,49 @@ window.closePopup = function() {
   }
 };
 
-// --- 4. ТАЙМЕР ---
+// --- 4. ТАЙМЕР (ИЗМЕНЕННАЯ ЛОГИКА) ---
 window.startTimer = function(element, totalSeconds) {
+  
+  // 1. ПРОВЕРКА: Если сейчас орет звонок — выключаем его и выходим
+  if (isSoundPlaying) {
+    timerSound.pause();        // Стоп звук
+    timerSound.currentTime = 0; // Перемотать в начало
+    isSoundPlaying = false;    // Снимаем флаг
+    return; // ВАЖНО: Выходим из функции, новый таймер НЕ запускается
+  }
+
+  // 2. Если таймер уже тикает, не запускаем второй поверх
   if (element.classList.contains('running')) return;
   
   triggerHaptic('medium'); // Вибрация старта
   
-  // Хак для iOS: запускаем звук по клику, чтобы разблокировать
+  // Хак для iOS: запускаем звук на 0.1 сек и сразу паузим.
+  // Это нужно, чтобы "разблокировать" аудио, иначе потом звонок может не сработать.
   timerSound.play().then(() => {
     timerSound.pause();
     timerSound.currentTime = 0;
   }).catch(e => {});
 
+  // Визуально показываем, что таймер пошел
   element.classList.add('running');
   
   const progressCircle = element.querySelector('.timer-path-progress');
   const textDisplay = element.querySelector('.timer-text');
   let timeLeft = totalSeconds;
   
+  // Обновляем сразу (0 сек)
   updateTimerVisuals(timeLeft, totalSeconds, 283, progressCircle, textDisplay);
 
+  // Запускаем интервал (тикает каждую секунду)
   const timer = setInterval(() => {
     timeLeft--;
     
     updateTimerVisuals(timeLeft, totalSeconds, 283, progressCircle, textDisplay);
 
+    // Если время вышло
     if (timeLeft <= 0) {
       clearInterval(timer);
-      finishTimer(element, textDisplay);
+      finishTimer(element, textDisplay); // Вызываем финиш
     }
   }, 1000);
 };
@@ -144,20 +162,29 @@ function updateTimerVisuals(timeLeft, totalSeconds, fullDash, circle, text) {
    const progress = 1 - (timeLeft / totalSeconds);
    circle.style.strokeDashoffset = fullDash - (progress * fullDash);
    
-   // Дыхание линии
+   // Дыхание линии (визуальный эффект)
    const newWidth = 2 + (progress * 6);
    circle.style.strokeWidth = `${newWidth}px`;
    
    text.innerText = formatTime(timeLeft);
 }
 
+// Функция завершения таймера
 function finishTimer(element, textDisplay) {
   element.classList.remove('running');
   textDisplay.innerText = "Готово!";
 
-  // Звук + Вибрация успеха
+  // 1. Ставим флаг, что звук играет
+  isSoundPlaying = true; 
+  
+  // 2. Запускаем звук
   timerSound.play().catch(e => {});
+  
+  // 3. Вибрация успеха
   triggerHaptic('success');
+  
+  // 4. Если звук доиграет сам до конца — снимаем флаг
+  timerSound.onended = () => { isSoundPlaying = false; };
 }
 
 function formatTime(seconds) {
@@ -210,9 +237,9 @@ async function buildStory() {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           
-          // --- ВОТ СЮДА ДОБАВЛЯЕМ ЗАКРЫТИЕ ПОПАПА ---
+          // --- ЗАКРЫТИЕ ПОПАПА ПРИ СКРОЛЛЕ ---
           window.closePopup(); 
-          // ------------------------------------------
+          // -----------------------------------
 
           // Легкая вибрация при смене слайда
           if (!entry.target.classList.contains('visible')) {
@@ -291,10 +318,12 @@ function updateVisuals(state) {
 
 // Слушатель слайдера
 const yieldSlider = document.getElementById('yield-slider');
-yieldSlider.addEventListener('input', (e) => {
-  renderIngredients(e.target.value);
-  triggerHaptic('selection'); // Вибрация "трещотка"
-});
+if(yieldSlider) {
+  yieldSlider.addEventListener('input', (e) => {
+    renderIngredients(e.target.value);
+    triggerHaptic('selection'); // Вибрация "трещотка"
+  });
+}
 
 // Запуск
 buildStory();
