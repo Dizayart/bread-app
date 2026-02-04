@@ -111,52 +111,89 @@ window.closePopup = function() {
   }
 };
 
-// --- 4. ТАЙМЕР (ИЗМЕНЕННАЯ ЛОГИКА) ---
+// --- 4. ТАЙМЕР (ВЕРСИЯ PRO: Всё включено) ---
 window.startTimer = function(element, totalSeconds) {
   
-  // 1. ПРОВЕРКА: Если сейчас орет звонок — выключаем его и выходим
+  // 1. ЛОГИКА ОСТАНОВКИ ЗВУКА (сохранили)
   if (isSoundPlaying) {
-    timerSound.pause();        // Стоп звук
-    timerSound.currentTime = 0; // Перемотать в начало
-    isSoundPlaying = false;    // Снимаем флаг
-    return; // ВАЖНО: Выходим из функции, новый таймер НЕ запускается
+    timerSound.pause();        
+    timerSound.currentTime = 0; 
+    isSoundPlaying = false;    
+    return; 
   }
 
-  // 2. Если таймер уже тикает, не запускаем второй поверх
+  // 2. ЗАЩИТА ОТ ПОВТОРА (сохранили)
   if (element.classList.contains('running')) return;
   
-  triggerHaptic('medium'); // Вибрация старта
+  // 3. ВИБРАЦИЯ (сохранили)
+  triggerHaptic('medium'); 
   
-  // Хак для iOS: запускаем звук на 0.1 сек и сразу паузим.
-  // Это нужно, чтобы "разблокировать" аудио, иначе потом звонок может не сработать.
+  // 4. ХАК ДЛЯ IOS (сохранили)
   timerSound.play().then(() => {
     timerSound.pause();
     timerSound.currentTime = 0;
   }).catch(e => {});
 
-  // Визуально показываем, что таймер пошел
   element.classList.add('running');
   
+  // --- НОВОЕ: ЛОГИКА КАЛЕНДАРЯ (Если дольше 10 минут) ---
+  const oldBtn = element.parentNode.querySelector('.calendar-btn');
+  if (oldBtn) oldBtn.remove();
+
+  if (totalSeconds > 600) { 
+    const endTime = new Date(Date.now() + totalSeconds * 1000);
+    const gCalUrl = generateGoogleCalendarLink("Хлеб: Таймер истек!", endTime);
+    
+    const calBtn = document.createElement('a');
+    calBtn.className = 'calendar-btn';
+    calBtn.href = gCalUrl;
+    calBtn.target = '_blank'; 
+    calBtn.innerText = '🔔 Поставить будильник';
+    calBtn.style.cssText = `
+      display: block; margin-top: 15px; text-align: center;
+      color: var(--accent-blue); text-decoration: none; font-weight: bold;
+      border: 1px dashed var(--accent-blue); padding: 8px; border-radius: 10px;
+    `;
+    
+    element.parentNode.appendChild(calBtn);
+  }
+
+  // --- НОВОЕ: WakeLock (держим экран включенным) ---
+  if ('wakeLock' in navigator) {
+    navigator.wakeLock.request('screen').catch(() => {});
+  }
+
   const progressCircle = element.querySelector('.timer-path-progress');
   const textDisplay = element.querySelector('.timer-text');
-  let timeLeft = totalSeconds;
   
-  // Обновляем сразу (0 сек)
-  updateTimerVisuals(timeLeft, totalSeconds, 283, progressCircle, textDisplay);
+  // --- ОБНОВЛЕННАЯ МАТЕМАТИКА (чтобы работало в фоне) ---
+  const startTime = Date.now(); 
+  const endTimeMs = startTime + (totalSeconds * 1000); 
 
-  // Запускаем интервал (тикает каждую секунду)
+  updateTimerVisuals(totalSeconds, totalSeconds, 283, progressCircle, textDisplay);
+
   const timer = setInterval(() => {
-    timeLeft--;
-    
-    updateTimerVisuals(timeLeft, totalSeconds, 283, progressCircle, textDisplay);
+    const now = Date.now();
+    // Считаем разницу, а не просто отнимаем единичку
+    const timeLeftMs = endTimeMs - now;
+    const timeLeftSec = Math.ceil(timeLeftMs / 1000);
 
-    // Если время вышло
-    if (timeLeft <= 0) {
+    updateTimerVisuals(timeLeftSec, totalSeconds, 283, progressCircle, textDisplay);
+
+    if (timeLeftSec <= 0) {
       clearInterval(timer);
-      finishTimer(element, textDisplay); // Вызываем финиш
+      finishTimer(element, textDisplay); 
     }
-  }, 1000);
+  }, 100); // Обновляем чаще для плавности
 };
+
+// Вспомогательная функция для ссылки календаря (обязательно нужна)
+function generateGoogleCalendarLink(title, endDate) {
+  const format = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+  const start = format(endDate); 
+  const end = format(new Date(endDate.getTime() + 5 * 60000)); 
+  return `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${start}/${end}`;
+}
 
 function updateTimerVisuals(timeLeft, totalSeconds, fullDash, circle, text) {
    const progress = 1 - (timeLeft / totalSeconds);
