@@ -43,7 +43,11 @@ function highlightTerms(text) {
   let highlightedText = text.replace(/\n/g, '<br>'); 
   
   // Авто-выделение чисел
-  const accentRegex = /(\d+[-–/]?\d*\s?(°C|°С|гр\.|минуты|минут|часов|часа|час))/g;
+  // ОБНОВЛЕННОЕ ПРАВИЛО:
+  // 1. (\d+([.,]\d+)?)      -> Ловит число, даже дробное (3 или 3,5)
+  // 2. (...)?               -> Необязательная часть диапазона (например "- 4")
+  // 3. (unit)               -> Единицы измерения
+  const accentRegex = /(\d+([.,]\d+)?(\s?[-–—]\s?\d+([.,]\d+)?)?\s?(°C|°С|гр\.|минуты|минут|мин\.|часов|часа|час))/gi;
   highlightedText = highlightedText.replace(accentRegex, '<span class="accent-text">$1</span>');
 
   // Поиск терминов
@@ -172,14 +176,20 @@ function toggleCalculator(stageIndex, animationState) {
   
   if (animationState === 'ingredients_screen') {
     calc.classList.add('active');
-    // УБРАЛИ rotate(-1deg), теперь ровно
-    calc.style.transform = "translate(-50%, -50%) scale(1)";
+    
+    // НОВАЯ ЛОГИКА: Только горизонтальное центрирование
+    // scale(1) - нормальный размер
+    // translateY(0) - стоит на своем месте (bottom: 40px)
+    calc.style.transform = "translateX(-50%) translateY(0) scale(1)";
+    
     calc.style.opacity = "1";
     calc.style.pointerEvents = "all";
   } else {
     calc.classList.remove('active');
-    // Просто уменьшаем и скрываем
-    calc.style.transform = "translate(-50%, -50%) scale(0.9)";
+    
+    // При скрытии уезжает чуть вниз и уменьшается
+    calc.style.transform = "translateX(-50%) translateY(20px) scale(0.95)";
+    
     calc.style.opacity = "0";
     calc.style.pointerEvents = "none";
   }

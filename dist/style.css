@@ -217,16 +217,26 @@ img, video, svg {
   padding: 20px;
   border-radius: var(--radius-card);
   border: 1px solid rgba(0,0,0,0.1);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
   
-  /* Позиционирование (как было, но без наклона в JS) */
+  /* НОВАЯ ПОЗИЦИЯ: ПРИЖИМАЕМ К НИЗУ */
   position: fixed;
-  top: 50%; 
-  left: 50%;
-  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  top: auto;          /* Отключаем верх */
+  bottom: 40px;       /* Отступ от нижнего края экрана */
+  left: 50%;          /* Центр по горизонтали */
+  
+  /* Начальное состояние для анимации */
+  transform: translateX(-50%) translateY(20px); /* Смещен чуть вниз */
   opacity: 0;
   pointer-events: none;
   z-index: 100;
+  
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Добавляем отступ снизу для первого слайда, чтобы текст не уходил под калькулятор */
+.handwritten-intro {
+    padding-bottom: 250px !important; /* Большой отступ снизу */
 }
 
 /* 2. Рукописный текст НАД калькулятором (вводная часть) */
