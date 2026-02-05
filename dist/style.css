@@ -15,6 +15,8 @@ html {
   scroll-behavior: smooth;
   /* Запрет на автоматическое изменение размера текста в iOS */
   -webkit-text-size-adjust: 100%;
+  /* --- ВОТ ЭТО СПАСЕТ ОТ СВОРАЧИВАНИЯ --- */
+  overscroll-behavior-y: none;
 }
 
 body {
