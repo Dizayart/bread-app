@@ -117,13 +117,18 @@ async function buildStory() {
     const section = document.createElement('section');
     section.className = 'step-block';
     
-    // Генерируем красивую плашку вместо таймера
+    // Если это самый первый экран (обычно там описание над калькулятором)
+    // Добавляем класс для рукописного шрифта
+    if (stage.animation_state === 'ingredients_screen' || stage.order_index === 0) {
+        section.classList.add('handwritten-intro');
+    }
+    
+    // Генерируем рукописную обводку вместо плашки
     let timerBadge = '';
     if (stage.timer_sec) {
         timerBadge = `
         <div class="static-timer-badge">
-            <span class="timer-icon">⏰</span> 
-            <span>Установите таймер: <strong>${formatTimeText(stage.timer_sec)}</strong></span>
+            Установите таймер: ${formatTimeText(stage.timer_sec)}
         </div>
         `;
     }
@@ -164,12 +169,19 @@ async function buildStory() {
 // --- 6. КАЛЬКУЛЯТОР И ПРОЧЕЕ ---
 function toggleCalculator(stageIndex, animationState) {
   const calc = document.getElementById('calculator-wrap');
+  
   if (animationState === 'ingredients_screen') {
     calc.classList.add('active');
-    calc.style.transform = "translate(-50%, -50%) rotate(-1deg)";
+    // УБРАЛИ rotate(-1deg), теперь ровно
+    calc.style.transform = "translate(-50%, -50%) scale(1)";
+    calc.style.opacity = "1";
+    calc.style.pointerEvents = "all";
   } else {
     calc.classList.remove('active');
-    calc.style.transform = "translate(-50%, -50%) rotate(0deg) scale(0.9)";
+    // Просто уменьшаем и скрываем
+    calc.style.transform = "translate(-50%, -50%) scale(0.9)";
+    calc.style.opacity = "0";
+    calc.style.pointerEvents = "none";
   }
 }
 
@@ -181,31 +193,54 @@ async function loadIngredients(recipeId) {
   }
 }
 
-function renderIngredients(count) {
-  const list = document.getElementById('ingredients-list');
-  const yieldVal = document.getElementById('yield-val');
-  if (yieldVal) yieldVal.innerText = count;
-  if (list) {
-    list.innerHTML = baseIngredients.map(ing => `
-      <li><span>${ing.name}</span><strong>${Math.round(ing.oneUnitWeight * count)} г</strong></li>
-    `).join('');
-  }
-}
-
 function updateVisuals(state) {
   const bowl = document.getElementById('bowl-state');
+  
+  // ЛОГИКА СКРЫТИЯ ЭМОДЗИ
+  if (state === 'ingredients_screen') {
+    bowl.style.opacity = '0'; // Полностью прячем эмодзи
+    return; // Выходим, чтобы не рисовать новый
+  }
+
+  // Обычная логика для остальных экранов
   const states = {
-    'intro': '🌾', 'ingredients_screen': '⚖️', 'starter_info': '🧪',
+    'intro': '🌾', 'starter_info': '🧪',
     'mix_1': '🥣', 'autolyse': '⏳', 'mix_2': '💪',
     'fermentation': '📈', 'shaping': '⚪', 'proofing': '🧺', 'baking': '🔥'
   };
+  
   const nextEmoji = states[state] || '🍞';
-  if(bowl.innerText !== nextEmoji) {
+  
+  // Если эмодзи отличается или был скрыт - показываем
+  if(bowl.innerText !== nextEmoji || bowl.style.opacity === '0') {
     bowl.style.opacity = '0';
     setTimeout(() => { 
         bowl.innerText = nextEmoji; 
         bowl.style.opacity = '1'; 
-    }, 600);
+    }, 300);
+  }
+}
+
+// Чекбоксы в калькуляторе
+function renderIngredients(count) {
+  const list = document.getElementById('ingredients-list');
+  const yieldVal = document.getElementById('yield-val');
+  
+  if (yieldVal) yieldVal.innerText = count;
+  
+  if (list) {
+    // Генерируем HTML с чекбоксами
+    list.innerHTML = baseIngredients.map((ing, index) => `
+      <li class="ingredient-item">
+        <label class="ing-label">
+          <input type="checkbox" class="ing-checkbox" id="ing-${index}">
+          <div class="checkmark-box"></div>
+          <span class="ing-name">${ing.name}</span>
+        </label>
+        
+        <span class="ing-weight">${Math.round(ing.oneUnitWeight * count)} г</span>
+      </li>
+    `).join('');
   }
 }
 
