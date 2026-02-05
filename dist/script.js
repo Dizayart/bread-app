@@ -138,10 +138,13 @@ async function buildStory() {
     }
 
     section.innerHTML = `
-      <h2>${highlightTerms(stage.title)}</h2>
-      <div class="hand-divider"></div>
-      <p>${highlightTerms(stage.content)}</p>
-      ${timerBadge}
+      <div class="scroll-content">
+          <h2>${highlightTerms(stage.title)}</h2>
+          <div class="hand-divider"></div>
+          <p>${highlightTerms(stage.content)}</p>
+          ${timerBadge}
+          <div style="height: 100px;"></div>
+      </div>
     `;
     
     const observer = new IntersectionObserver((entries) => {

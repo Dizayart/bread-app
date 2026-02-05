@@ -63,37 +63,64 @@ img, video, svg {
   transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* --- 3. БЛОКИ ЭТАПОВ (МОБИЛЬНАЯ АДАПТАЦИЯ) --- */
+/* --- 3. БЛОКИ ЭТАПОВ (ВНУТРЕННИЙ СКРОЛЛ) --- */
 .step-block {
-  height: 100dvh; /* Динамическая высота под мобайл */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  text-align: center;
+  height: 100dvh; /* Строго высота экрана */
+  width: 100%;
   
-  /* Отступы */
-  padding: env(safe-area-inset-top, 10px) 20px 0 20px;
-  box-sizing: border-box;
+  /* Отключаем отступы у самого блока, переносим их внутрь */
+  padding: 0; 
   
-  /* Магнитная прокрутка */
+  /* Магнитная прокрутка для самой страницы */
   scroll-snap-align: start;
-  /* Важно: останавливаться строго на блоке */
-  scroll-snap-stop: always; 
+  scroll-snap-stop: always;
   
-  /* Анимация */
+  /* Анимация появления */
   opacity: 0.2;
-  /* УБРАЛИ transform (движение), чтобы не было скачков */
-  transition: opacity 0.8s ease; 
+  transition: opacity 0.8s ease;
+  
+  /* Скрываем всё, что вылезает за пределы блока */
+  overflow: hidden; 
 }
 
 .step-block.visible {
   opacity: 1;
-  /* УБРАЛИ transform */
 }
 
 .step-block:last-child {
   opacity: 1 !important;
+}
+
+/* --- НОВЫЙ КЛАСС ДЛЯ КОНТЕНТА ВНУТРИ --- */
+.scroll-content {
+  width: 100%;
+  height: 100%; /* Занимает всю высоту родителя */
+  
+  /* РАЗРЕШАЕМ СКРОЛЛ ВНУТРИ */
+  overflow-y: auto; 
+  overflow-x: hidden;
+  
+  /* ВАЖНО: contain предотвращает случайное перелистывание слайда, 
+     пока мы скроллим текст. Слайд переключится только когда текст кончится. */
+  overscroll-behavior: contain; 
+  
+  /* Переносим отступы сюда, чтобы текст не прилипал к краям */
+  padding: env(safe-area-inset-top, 10px) 20px 0 20px;
+  box-sizing: border-box;
+  
+  /* Выравнивание содержимого */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  
+  /* Прячем полосу прокрутки для красоты (но скролл работает) */
+  scrollbar-width: none; 
+}
+
+/* Прячем скроллбар для Chrome/Safari */
+.scroll-content::-webkit-scrollbar {
+  display: none;
 }
 
 /* --- 4. ТИПОГРАФИКА (АФИША) --- */
